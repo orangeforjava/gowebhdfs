@@ -8,7 +8,7 @@ import "path"
 import "os/user"
 import "strconv"
 import "time"
-import "gohadoop/webhdfs"
+import "github.com/devaudio/webhdfs"
 
 var uname string
 

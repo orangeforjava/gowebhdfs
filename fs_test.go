@@ -26,7 +26,7 @@ func Test_buildRequestUrl(t *testing.T) {
 	q.Set("user.name", user.Username)
 	url1.RawQuery = q.Encode()
 
-	conf := Configuration{Addr: url1.Host}
+	conf := Configuration{Addr: url1.Host, User: user.Username}
 
 	u, err := buildRequestUrl(conf, &Path{Name: "/test"}, nil)
 	if err != nil {

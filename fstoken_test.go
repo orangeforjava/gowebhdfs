@@ -15,7 +15,7 @@ func Test_GetDelegationToken(t *testing.T) {
 	t.Logf("Test_GetDelegationToken - Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	token, err := fs.GetDelegationToken("hdfsuser")
@@ -34,7 +34,7 @@ func Test_GetDelegationTokens(t *testing.T) {
 	t.Logf("Test_GetDelegationTokens - Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	tokens, err := fs.GetDelegationTokens("hdfsuser")
@@ -53,7 +53,7 @@ func Test_RenewDelegationTokens(t *testing.T) {
 	t.Logf("Test_RenewDelegationTokens - Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	token, err := fs.RenewDelegationToken("KAAKSm9ie2radfaerzadfDcqdt14AfeE=")
@@ -72,7 +72,7 @@ func Test_CancelDelegationTokens(t *testing.T) {
 	t.Logf("Test_CancelDelegationTokens - Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.CancelDelegationToken("KAAKSm9ie2radfaerzadfDcqdt14AfeE=")

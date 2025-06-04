@@ -15,7 +15,7 @@ func Test_Rename(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.Rename(Path{Name: "/testing"}, Path{Name: "/testing/newname"})
@@ -34,7 +34,7 @@ func Test_Delete(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.Delete(Path{Name: "/testing/todelete"}, false)
@@ -53,7 +53,7 @@ func Test_SetPermission(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.SetPermission(Path{Name: "/testing"}, 0744)
@@ -72,7 +72,7 @@ func Test_SetOwner(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.SetOwner(Path{Name: "/testing"}, "newowner", "")
@@ -91,7 +91,7 @@ func Test_SetReplication(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.SetReplication(Path{Name: "/testing"}, 4)
@@ -110,7 +110,7 @@ func Test_SetTimes(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.SetTimes(Path{Name: "/testing"}, -1, 123456789)
@@ -129,7 +129,7 @@ func Test_MkDirs(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.MkDirs(Path{Name: "/test"}, 0744)
@@ -148,7 +148,7 @@ func Test_CreateSymlink(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.CreateSymlink(Path{Name: "/test/orig"}, Path{Name: "/symlink"}, false)
@@ -168,7 +168,7 @@ func Test_GetFileStatus(t *testing.T) {
 
 	url, _ := url.Parse(server.URL)
 
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	fileStatus, err := fs.GetFileStatus(Path{Name: "/test"})
@@ -188,7 +188,7 @@ func Test_ListStatus(t *testing.T) {
 
 	url, _ := url.Parse(server.URL)
 
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	statuses, err := fs.ListStatus(Path{Name: "/test"})
@@ -207,7 +207,7 @@ func Test_GetContentSummary(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	summary, err := fs.GetContentSummary(Path{Name: "/test"})
 	if err != nil {
 		t.Fatal(err)
@@ -223,7 +223,7 @@ func Test_GetFileChecksum(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	checksum, err := fs.GetFileChecksum(Path{Name: "/test"})
 	if err != nil {
 		t.Fatal(err)

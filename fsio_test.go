@@ -23,7 +23,7 @@ func Test_Create(t *testing.T) {
 	t.Logf("Test_Create() - Started httptest.Server on %v", server2.URL)
 
 	url, _ := url.Parse(server2.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	_, err := fs.Create(
@@ -48,7 +48,7 @@ func Test_Open(t *testing.T) {
 
 	url, _ := url.Parse(server.URL)
 
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	data, err := fs.Open(Path{Name: "/test"}, 0, 512, 2048)
@@ -78,7 +78,7 @@ func Test_Append(t *testing.T) {
 	t.Logf("Test_Append() - Started httptest.Server on %v", server2.URL)
 
 	url, _ := url.Parse(server2.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	ok, err := fs.Append(bytes.NewBufferString("Hello webhdfs users!"),
@@ -99,7 +99,7 @@ func Test_Concat(t *testing.T) {
 	t.Logf("Started httptest.Server on %v", server.URL)
 
 	url, _ := url.Parse(server.URL)
-	conf := Configuration{Addr: url.Host}
+	conf := Configuration{Addr: url.Host, User: "testuser"}
 	fs, _ := NewFileSystem(conf)
 
 	_, err := fs.Concat(Path{Name: "/testing/concat.f"}, []string{"a/b/c", "e/f/g"})
@@ -159,7 +159,7 @@ func mockServerFor_CreatFile(redir *url.URL) *httptest.Server {
 		}
 
 		rsp.Header().Set("Location", redir.Scheme+"://"+redir.Host+req.URL.String())
-		rsp.WriteHeader(http.StatusSeeOther)
+		rsp.WriteHeader(http.StatusTemporaryRedirect)
 
 		fmt.Fprintf(rsp, "")
 	}
@@ -220,7 +220,7 @@ func mockServerFor_OpenForAppend(redir *url.URL) *httptest.Server {
 		}
 
 		rsp.Header().Set("Location", redir.Scheme+"://"+redir.Host+req.URL.String())
-		rsp.WriteHeader(http.StatusSeeOther)
+		rsp.WriteHeader(http.StatusTemporaryRedirect)
 
 		fmt.Fprintf(rsp, "")
 	}
