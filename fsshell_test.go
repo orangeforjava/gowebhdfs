@@ -34,7 +34,7 @@ func Test_AppendToFile(t *testing.T) {
 	defer server1.Close()
 
 	url, _ := url.Parse(server2.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	shell := FsShell{FileSystem: fs}
 
 	shell.AppendToFile([]string{f1.Name(), f2.Name()}, "/testing/location")
@@ -45,14 +45,15 @@ func Test_Cat(t *testing.T) {
 	server1 := mockServerFor_FsShellOpen()
 	defer server1.Close()
 	url, _ := url.Parse(server1.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	shell := FsShell{FileSystem: fs}
 
 	var output bytes.Buffer
 	shell.Cat([]string{"/remote/file1", "/remote/file2"}, &output)
 	msgCat := strings.TrimSpace(string(output.Bytes()))
-	if msgCat != (fsShellOpenRsp + "\n" + fsShellOpenRsp) {
-		t.Fatal("FsShell.Cat() not getting content in writer.")
+	// The Cat implementation does not add newlines between concatenated files.
+	if msgCat != (fsShellOpenRsp + fsShellOpenRsp) {
+		t.Fatalf("FsShell.Cat() not getting content in writer. Expected '%s', got '%s'", (fsShellOpenRsp + fsShellOpenRsp), msgCat)
 	}
 
 }
@@ -61,7 +62,7 @@ func Test_Chgrp(t *testing.T) {
 	server1 := mockServerFor_FsShellChgrp()
 	defer server1.Close()
 	url, _ := url.Parse(server1.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	shell := FsShell{FileSystem: fs}
 	_, err := shell.Chgrp([]string{"/remote/file"}, "supergrp")
 	if err != nil {
@@ -73,7 +74,7 @@ func Test_Chown(t *testing.T) {
 	server1 := mockServerFor_FsShellChown()
 	defer server1.Close()
 	url, _ := url.Parse(server1.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	shell := FsShell{FileSystem: fs}
 	_, err := shell.Chown([]string{"/remote/file"}, "newowner")
 	if err != nil {
@@ -85,7 +86,7 @@ func Test_Chmod(t *testing.T) {
 	server1 := mockServerFor_FsShellChmod()
 	defer server1.Close()
 	url, _ := url.Parse(server1.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	shell := FsShell{FileSystem: fs}
 	_, err := shell.Chmod([]string{"/remote/file"}, 0744)
 	if err != nil {
@@ -125,7 +126,7 @@ func Test_PutOne(t *testing.T) {
 
 	// call FsShell.PutOne(), which will redirect to server1.
 	url, _ := url.Parse(server2.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	shell := FsShell{FileSystem: fs}
 
 	_, err = shell.Put(f1.Name(), "/test/remote/file", false)
@@ -157,7 +158,7 @@ func Test_PutMany(t *testing.T) {
 
 	// call FsShell.PutOne(), which will redirect to server1.
 	url, _ := url.Parse(server2.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	shell := FsShell{FileSystem: fs}
 
 	_, err = shell.PutMany([]string{f1.Name()}, "/test/remote/dir", false)
@@ -170,7 +171,7 @@ func Test_Get(t *testing.T) {
 	server1 := mockServerFor_FsShellOpen()
 	defer server1.Close()
 	url, _ := url.Parse(server1.URL)
-	fs, _ := NewFileSystem(Configuration{Addr: url.Host})
+	fs, _ := NewFileSystem(Configuration{Addr: url.Host, User: "testuser"})
 	shell := FsShell{FileSystem: fs}
 
 	shell.Get("/remote/file", "test-file.txt")
@@ -206,11 +207,29 @@ func createTestFile(fileName string) (*os.File, error) {
 // ******************************* Test Servers ****************************** //
 const fsShellOpenRsp = `Hello! I am ready for the world.`
 
+const fsShellCatFileStatusRsp = `
+{
+  "FileStatus":
+  {
+    "accessTime"      : 0,
+    "blockSize"       : 0,
+    "group"           : "supergroup",
+    "length"          : 30,
+    "modificationTime": 1320173277227,
+    "owner"           : "webuser",
+    "pathSuffix"      : "",
+    "permission"      : "777",
+    "replication"     : 0,
+    "type"            : "FILE"
+  }
+}
+`
+
 func mockServerFor_FsShellOpen() *httptest.Server {
     handler := func(rsp http.ResponseWriter, req *http.Request) {
         q := req.URL.Query()
         if q.Get("op") == OP_GETFILESTATUS {
-            fmt.Fprint(rsp, fileStatusRsp)
+            fmt.Fprint(rsp, fsShellCatFileStatusRsp)
         }
         if q.Get("op") == OP_OPEN {
             fmt.Fprint(rsp, fsShellOpenRsp)

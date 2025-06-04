@@ -7,10 +7,10 @@ It provides typed access to remote HDFS resources via Go's JSON marshaling syste
 
 ### Usage
 ```
-go get github.com/gohadoop/webhdfs
+go get github.com/devaudio/webhdfs
 ```
 ```go
-import github.com/gohadoop/webhdfs
+import github.com/devaudio/webhdfs
 ...
 fs, err := webhdfs.NewFileSystem(webhdfs.Configuration{Addr: "localhost:50070", User: "hdfs"})
 if err != nil{
@@ -162,6 +162,12 @@ Change file mod of remote HDFS files.
 ```go
 ok, err := shell.Chmod([]string{"/remote/hdfs/file/"}, 0744)
 ```
+
+## Contributing
+Contributions are welcome! Please feel free to submit a pull request.
+
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ### Limitations
 1. Only "SIMPLE" security mode supported.

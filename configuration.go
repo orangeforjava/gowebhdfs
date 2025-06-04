@@ -4,7 +4,6 @@ import "fmt"
 import "errors"
 import "time"
 import "net/url"
-import "os/user"
 
 const WebHdfsVer string = "/webhdfs/v1"
 
@@ -28,16 +27,15 @@ func NewConfiguration() *Configuration {
 }
 
 func (conf *Configuration) GetNameNodeUrl() (*url.URL, error) {
-	if &conf.Addr == nil {
+	if conf.Addr == "" {
 		return nil, errors.New("Configuration namenode address not set.")
 	}
 
-	var urlStr string = fmt.Sprintf("http://%s%s%s", conf.Addr, WebHdfsVer, conf.BasePath)
-
-	if &conf.User == nil || len(conf.User) == 0 {
-		u, _ := user.Current()
-		conf.User = u.Username
+	if conf.User == "" {
+		return nil, errors.New("User is not set")
 	}
+
+	var urlStr string = fmt.Sprintf("http://%s%s%s", conf.Addr, WebHdfsVer, conf.BasePath)
 	urlStr = urlStr + "?user.name=" + conf.User
 
 	u, err := url.Parse(urlStr)
