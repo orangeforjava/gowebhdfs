@@ -15,6 +15,15 @@ type Configuration struct {
 	DisableKeepAlives     bool
 	DisableCompression    bool
 	ResponseHeaderTimeout time.Duration
+	// ResolveDataNodeHostnames rewrites WebHDFS DataNode redirect hosts using
+	// NameNode JMX LiveNodes, avoiding reliance on local hosts/DNS entries.
+	ResolveDataNodeHostnames bool
+	// DataNodeHostMap optionally provides explicit DataNode hostname to IP/host
+	// mappings. It is used before fetching mappings from NameNode JMX.
+	DataNodeHostMap map[string]string
+	// DataNodeHostMapTTL controls how long JMX-derived DataNode mappings are
+	// cached. If unset, one minute is used.
+	DataNodeHostMapTTL time.Duration
 }
 
 func NewConfiguration() *Configuration {
@@ -23,6 +32,7 @@ func NewConfiguration() *Configuration {
 		DisableKeepAlives:     false,
 		DisableCompression:    true,
 		ResponseHeaderTimeout: time.Second * 17,
+		DataNodeHostMapTTL:    time.Minute,
 	}
 }
 

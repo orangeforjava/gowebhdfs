@@ -10,6 +10,8 @@ import "net"
 import "net/http"
 import "net/url"
 import "io/ioutil"
+import "sync"
+import "time"
 
 const (
 	OP_OPEN                  = "OPEN"
@@ -41,8 +43,11 @@ func µ(v ...interface{}) []interface{} {
 
 // This type maps fields and functions to HDFS's FileSystem class.
 type FileSystem struct {
-	Config Configuration
-	client http.Client
+	Config          Configuration
+	client          http.Client
+	dataNodeMu      sync.Mutex
+	dataNodeHostMap map[string]string
+	dataNodeMapAt   time.Time
 }
 
 func NewFileSystem(conf Configuration) (*FileSystem, error) {

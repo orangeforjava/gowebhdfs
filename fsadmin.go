@@ -27,8 +27,8 @@ func (fs *FileSystem) Rename(source Path, destination Path) (bool, error) {
 	return hdfsData.Boolean, nil
 }
 
-//Deletes the specified path.
-//See HDFS FileSystem.delete()
+// Deletes the specified path.
+// See HDFS FileSystem.delete()
 func (fs *FileSystem) Delete(path Path, recursive bool) (bool, error) {
 	if path.Name == "" {
 		return false, fmt.Errorf("Delete() - param path cannot be empty.")
@@ -81,8 +81,8 @@ func (fs *FileSystem) SetPermission(path Path, permission os.FileMode) (bool, er
 	return true, nil
 }
 
-//Sets owner for the specified path.
-//See HDFS FileSystem.setOwner()
+// Sets owner for the specified path.
+// See HDFS FileSystem.setOwner()
 func (fs *FileSystem) SetOwner(path Path, owner string, group string) (bool, error) {
 	if path.Name == "" {
 		return false, fmt.Errorf("SetOwner() - param path cannot be empty.")
@@ -257,8 +257,8 @@ func (fs *FileSystem) ListStatus(p Path) ([]FileStatus, error) {
 	return hdfsData.FileStatuses.FileStatus, nil
 }
 
-//Returns ContentSummary for the given path.
-//For detail, see HDFS FileSystem.getContentSummary()
+// Returns ContentSummary for the given path.
+// For detail, see HDFS FileSystem.getContentSummary()
 func (fs *FileSystem) GetContentSummary(p Path) (ContentSummary, error) {
 	params := map[string]string{"op": OP_GETCONTENTSUMMARY}
 	u, err := buildRequestUrl(fs.Config, &p, &params)
@@ -288,8 +288,30 @@ func (fs *FileSystem) GetFileChecksum(p Path) (FileChecksum, error) {
 		return FileChecksum{}, err
 	}
 
+	tr := &http.Transport{}
 	req, _ := http.NewRequest("GET", u.String(), nil)
-	hdfsData, err := requestHdfsData(fs.client, *req)
+	rsp, err := tr.RoundTrip(req)
+	if err != nil {
+		return FileChecksum{}, err
+	}
+	if rsp.StatusCode == http.StatusTemporaryRedirect {
+		rsp.Body.Close()
+		loc := rsp.Header.Get("Location")
+		loc, err = fs.resolveDataNodeURL(loc)
+		if err != nil {
+			return FileChecksum{}, fmt.Errorf("GetFileChecksum(%s) - resolving datanode URL: %s", loc, err.Error())
+		}
+
+		req, _ = http.NewRequest("GET", loc, nil)
+		hdfsData, err := requestHdfsData(fs.client, *req)
+		if err != nil {
+			return FileChecksum{}, err
+		}
+		return hdfsData.FileChecksum, nil
+	}
+	defer rsp.Body.Close()
+
+	hdfsData, err := responseToHdfsData(rsp)
 	if err != nil {
 		return FileChecksum{}, err
 	}

@@ -60,9 +60,14 @@ func (fs *FileSystem) Create(
 	if err != nil {
 		return false, err
 	}
+	defer rsp.Body.Close()
 
 	// extract returned url in header.
 	loc := rsp.Header.Get("Location")
+	loc, err = fs.resolveDataNodeURL(loc)
+	if err != nil {
+		return false, fmt.Errorf("FileSystem.Create(%s) - resolving datanode URL: %s", loc, err.Error())
+	}
 	u, err = url.ParseRequestURI(loc)
 	if err != nil {
 		return false, fmt.Errorf("FileSystem.Create(%s) - invalid redirect URL from server: %s", u, err.Error())
@@ -75,7 +80,7 @@ func (fs *FileSystem) Create(
 		fmt.Errorf("FileSystem.Create(%s) - bad url: %s", loc, err.Error())
 		return false, err
 	}
-    defer rsp.Body.Close()  // Ensure the Body is always closed UP here, not below--> otherwise, memory leaks
+	defer rsp.Body.Close() // Ensure the Body is always closed UP here, not below--> otherwise, memory leaks
 
 	if rsp.StatusCode != http.StatusCreated {
 		_, err = responseToHdfsData(rsp)
@@ -88,8 +93,8 @@ func (fs *FileSystem) Create(
 	return true, nil
 }
 
-//Opens the specificed Path and returns its content to be accessed locally.
-//See HDFS WebHdfsFileSystem.open()
+// Opens the specificed Path and returns its content to be accessed locally.
+// See HDFS WebHdfsFileSystem.open()
 // See http://hadoop.apache.org/docs/r2.2.0/hadoop-project-dist/hadoop-hdfs/WebHDFS.html#HTTP_Query_Parameter_Dictionary
 func (fs *FileSystem) Open(p Path, offset, length int64, buffSize int) (io.ReadCloser, error) {
 	params := map[string]string{"op": OP_OPEN}
@@ -115,10 +120,26 @@ func (fs *FileSystem) Open(p Path, offset, length int64, buffSize int) (io.ReadC
 		return nil, err
 	}
 
+	tr := &http.Transport{}
 	req, _ := http.NewRequest("GET", u.String(), nil)
-	rsp, err := fs.client.Do(req)
+	rsp, err := tr.RoundTrip(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if rsp.StatusCode == http.StatusTemporaryRedirect {
+		rsp.Body.Close()
+		loc := rsp.Header.Get("Location")
+		loc, err = fs.resolveDataNodeURL(loc)
+		if err != nil {
+			return nil, fmt.Errorf("Open(%s) - resolving datanode URL: %s", loc, err.Error())
+		}
+
+		req, _ = http.NewRequest("GET", loc, nil)
+		rsp, err = fs.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// possible error
@@ -158,9 +179,9 @@ func (fs *FileSystem) Append(data io.Reader, p Path, buffersize uint) (bool, err
 	if err != nil {
 		return false, err
 	}
+	defer rsp.Body.Close()
 
 	if rsp.StatusCode != http.StatusTemporaryRedirect {
-		defer rsp.Body.Close()
 		res, err := responseToHdfsData(rsp)
 		if err != nil {
 			return false, err
@@ -172,6 +193,10 @@ func (fs *FileSystem) Append(data io.Reader, p Path, buffersize uint) (bool, err
 
 	// extract returned url in header.
 	loc := rsp.Header.Get("Location")
+	loc, err = fs.resolveDataNodeURL(loc)
+	if err != nil {
+		return false, fmt.Errorf("Append(%s) - resolving datanode URL: %s", loc, err.Error())
+	}
 	u, err = url.ParseRequestURI(loc)
 	if err != nil {
 		return false, fmt.Errorf("Append(%s) - did not receive a valid URL from server.", loc)
@@ -182,7 +207,7 @@ func (fs *FileSystem) Append(data io.Reader, p Path, buffersize uint) (bool, err
 	if err != nil {
 		return false, err
 	}
-    defer rsp.Body.Close()  // Ensure the Body is always closed here, not below
+	defer rsp.Body.Close() // Ensure the Body is always closed here, not below
 
 	if rsp.StatusCode != http.StatusOK {
 		res, err := responseToHdfsData(rsp)
