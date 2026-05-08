@@ -8,7 +8,7 @@ import "path"
 import "os/user"
 import "strconv"
 import "time"
-import "github.com/devaudio/webhdfs"
+import "github.com/orangeforjava/gowebhdfs"
 
 var uname string
 

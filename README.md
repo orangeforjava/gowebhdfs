@@ -7,10 +7,10 @@ It provides typed access to remote HDFS resources via Go's JSON marshaling syste
 
 ### Usage
 ```
-go get github.com/devaudio/webhdfs
+go get github.com/orangeforjava/gowebhdfs
 ```
 ```go
-import github.com/devaudio/webhdfs
+import "github.com/orangeforjava/gowebhdfs"
 ...
 fs, err := webhdfs.NewFileSystem(webhdfs.Configuration{Addr: "localhost:50070", User: "hdfs"})
 if err != nil{
