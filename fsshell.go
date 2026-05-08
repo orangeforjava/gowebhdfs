@@ -4,8 +4,8 @@ import "os"
 import "bytes"
 import "fmt"
 import "io"
-import "path"
 import "io/ioutil"
+import "path"
 
 const MAX_UP_CHUNK int64 = 1 * (1024 * 1024) * 1024 // 1 GB.
 const MAX_DOWN_CHUNK int64 = 500 * (1024 * 1024)    // 500 MB
@@ -161,27 +161,63 @@ func (shell FsShell) PutMany(files []string, hdfsPath string, overwrite bool) (b
 
 // Retrieves a remote HDFS file and saves as the specified local file.
 func (shell FsShell) Get(hdfsPath, localFile string) (bool, error) {
+	hdfs := Path{Name: hdfsPath}
+	var verifier *streamingHDFSChecksum
+	var remote FileChecksum
+	var status FileStatus
+	if shell.FileSystem.checksumEnabled() {
+		var err error
+		status, err = shell.FileSystem.GetFileStatus(hdfs)
+		if err != nil {
+			return false, err
+		}
+		remote, err = shell.FileSystem.GetFileChecksum(hdfs)
+		if err != nil {
+			return false, err
+		}
+		spec, err := ChecksumSpecFromRemote(status, remote, shell.FileSystem.checksumWorkers())
+		if err != nil {
+			return false, err
+		}
+		verifier, err = newStreamingHDFSChecksum(spec)
+		if err != nil {
+			return false, err
+		}
+	}
+
 	file, err := os.Create(localFile)
 	if err != nil {
 		return false, err
 	}
 	defer file.Close()
 
-	reader, err := shell.FileSystem.Open(Path{Name: hdfsPath}, 0, 0, 0)
-	if err != nil {
-		return false, err
-	}
-	data, err := ioutil.ReadAll(reader)
+	reader, err := shell.FileSystem.Open(hdfs, 0, 0, 0)
 	if err != nil {
 		return false, err
 	}
 	defer reader.Close()
 
-	_, err = file.Write(data)
+	var written int64
+	if verifier != nil {
+		written, err = io.Copy(io.MultiWriter(file, verifier), reader)
+	} else {
+		written, err = io.Copy(file, reader)
+	}
 	if err != nil {
 		return false, err
 	}
 	file.Sync()
+
+	if verifier != nil {
+		if written != status.Length {
+			return false, fmt.Errorf("FsShell.Get(%s) - local size %d does not match HDFS size %d", hdfsPath, written, status.Length)
+		}
+		local := verifier.Sum()
+		remoteBytes := NormalizeChecksumBytes(remote)
+		if local.Bytes != remoteBytes {
+			return false, fmt.Errorf("FsShell.Get(%s) - checksum mismatch: local=%s remote=%s algorithm=%s", hdfsPath, local.Bytes, remoteBytes, remote.Algorithm)
+		}
+	}
 	return true, nil
 }
 
@@ -197,12 +233,12 @@ func (shell FsShell) MoveFromLocal(localFile, hdfsPath string, overwrite bool) (
 	if ok && err != nil {
 		hdfStat, err := shell.FileSystem.GetFileStatus(Path{Name: hdfsPath})
 		if err != nil {
-            return false, fmt.Errorf("Unable to verify remote file: %s", err.Error())
+			return false, fmt.Errorf("Unable to verify remote file: %s", err.Error())
 		}
 
 		file, err := os.Open(localFile)
 		if err != nil {
-            return false, fmt.Errorf("Unable to validate operation: %s ", err.Error())
+			return false, fmt.Errorf("Unable to validate operation: %s ", err.Error())
 		}
 		if hdfStat.Length != µ(file.Stat())[0].(os.FileInfo).Size() {
 			return false, fmt.Errorf("Remote and local file size mismatch.")
@@ -257,7 +293,8 @@ func (shell FsShell) Rm(hdfsPath string) (bool, error) {
 }
 
 // TODO: slirp file in x Gbyte chunks when file.Stat() >> X.
-//       this is to avoid blow up memory on large files.
+//
+//	this is to avoid blow up memory on large files.
 func slirpLocalFile(file os.File, offset int64) ([]byte, int64, error) {
 	stat, err := file.Stat()
 	if err != nil {

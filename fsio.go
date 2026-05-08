@@ -90,6 +90,23 @@ func (fs *FileSystem) Create(
 		return false, fmt.Errorf("FileSystem.Create(%s) - File not created.  Server returned status %v", loc, rsp.StatusCode)
 	}
 
+	if fs.checksumEnabled() {
+		localPath, ok := localPathFromReader(data)
+		if !ok {
+			return false, fmt.Errorf("FileSystem.Create(%s) - checksum verification requires a local file reader or DisableChecksumVerification=true", loc)
+		}
+		result, err := fs.CompareLocalFileChecksum(localPath, p)
+		if err != nil {
+			return false, err
+		}
+		if !result.SizeMatch {
+			return false, fmt.Errorf("FileSystem.Create(%s) - checksum verification failed: local size %d != HDFS size %d", loc, result.LocalBytes, result.RemoteBytes)
+		}
+		if !result.Match {
+			return false, fmt.Errorf("FileSystem.Create(%s) - checksum mismatch: local=%s remote=%s algorithm=%s", loc, result.LocalChecksum, result.RemoteChecksum, result.Algorithm)
+		}
+	}
+
 	return true, nil
 }
 

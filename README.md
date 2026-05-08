@@ -41,6 +41,7 @@ conf.Addr = "localhost:50070"
 conf.User = "hdfs"
 conf.ConnectionTime = time.Second * 15
 conf.DisableKeepAlives = false 
+conf.ChecksumWorkers = 4
 ```
 
 #### FileSystem{} Struct
@@ -51,10 +52,11 @@ fs, err := webhdfs.NewFileSystem(conf)
 Now you are ready to communicate with HDFS.
 
 #### Create File
-`FileSystem.Create()` creates and store a remote file on the HDFS server.
+`FileSystem.Create()` creates and store a remote file on the HDFS server. By default it verifies a local file reader against HDFS `GETFILECHECKSUM` after upload. Set `DisableChecksumVerification` to `true` for stream-only writers that cannot be re-read locally.
 ```
+file, err := os.Open("local-file")
 ok, err := fs.Create(
-    bytes.NewBufferString("Hello webhdfs users!"),
+    file,
 	webhdfs.Path{Name:"/remote/file"},
 	false,
 	0,
@@ -63,6 +65,26 @@ ok, err := fs.Create(
 	0,
 )
 ```
+
+#### Checksum Verification
+Local files can be compared with HDFS files without downloading the HDFS file:
+```go
+result, err := fs.CompareLocalFileChecksum("local-file", webhdfs.Path{Name:"/remote/file"})
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(result.Match, result.LocalChecksum, result.RemoteChecksum)
+```
+
+If you already have the remote metadata, compute the local checksum directly:
+```go
+status, _ := fs.GetFileStatus(webhdfs.Path{Name:"/remote/file"})
+remote, _ := fs.GetFileChecksum(webhdfs.Path{Name:"/remote/file"})
+spec, _ := webhdfs.ChecksumSpecFromRemote(status, remote, 4)
+local, _ := webhdfs.ComputeLocalFileChecksum("local-file", spec)
+```
+
+`FsShell.Get()` verifies downloads while streaming the response to disk. `FileSystem.Open()` stays a low-level reader; callers that use it directly are responsible for reading the full stream and validating checksums themselves.
 
 #### Open HDFS File
 Use the `FileSystem.Open()` to open and read a remote file from HDFS.  

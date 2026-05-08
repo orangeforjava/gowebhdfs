@@ -6,6 +6,7 @@ import "net/url"
 import "fmt"
 import "log"
 import "bytes"
+import "os"
 import "io/ioutil"
 import "net/http"
 import "strings"
@@ -23,7 +24,7 @@ func Test_Create(t *testing.T) {
 	t.Logf("Test_Create() - Started httptest.Server on %v", server2.URL)
 
 	url, _ := url.Parse(server2.URL)
-	conf := Configuration{Addr: url.Host, User: "testuser"}
+	conf := Configuration{Addr: url.Host, User: "testuser", DisableChecksumVerification: true}
 	fs, _ := NewFileSystem(conf)
 
 	_, err := fs.Create(
@@ -38,6 +39,53 @@ func Test_Create(t *testing.T) {
 
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func Test_CreateVerifiesChecksumByDefault(t *testing.T) {
+	filename := writeChecksumPatternFile(t, 1024*1024)
+	var server *httptest.Server
+	createRequests := 0
+	server = httptest.NewServer(http.HandlerFunc(func(rsp http.ResponseWriter, req *http.Request) {
+		q := req.URL.Query()
+		switch q.Get("op") {
+		case OP_CREATE:
+			createRequests++
+			if createRequests == 1 {
+				rsp.Header().Set("Location", server.URL+req.URL.String())
+				rsp.WriteHeader(http.StatusTemporaryRedirect)
+				return
+			}
+			data, _ := ioutil.ReadAll(req.Body)
+			req.Body.Close()
+			if len(data) != 1024*1024 {
+				t.Fatalf("uploaded bytes = %d, want %d", len(data), 1024*1024)
+			}
+			rsp.WriteHeader(http.StatusCreated)
+		case OP_GETFILESTATUS:
+			fmt.Fprintf(rsp, `{"FileStatus":{"blockSize":134217728,"length":1048576,"type":"FILE"}}`)
+		case OP_GETFILECHECKSUM:
+			fmt.Fprintf(rsp, `{"FileChecksum":{"algorithm":"MD5-of-0MD5-of-512CRC32C","bytes":"0000020000000000000000000e676adb4261d919c6bb465c056b50cc00000000","length":28}}`)
+		default:
+			t.Fatalf("unexpected op %q", q.Get("op"))
+		}
+	}))
+	defer server.Close()
+
+	u, _ := url.Parse(server.URL)
+	fs, _ := NewFileSystem(Configuration{Addr: u.Host, User: "testuser"})
+	file, err := os.Open(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	ok, err := fs.Create(file, Path{Name: "/testing/newfile"}, true, 0, 0, 0644, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("Create returned false")
 	}
 }
 

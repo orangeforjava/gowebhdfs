@@ -24,6 +24,12 @@ type Configuration struct {
 	// DataNodeHostMapTTL controls how long JMX-derived DataNode mappings are
 	// cached. If unset, one minute is used.
 	DataNodeHostMapTTL time.Duration
+	// DisableChecksumVerification disables the default local-vs-HDFS checksum
+	// verification used by Create and FsShell upload/download helpers.
+	DisableChecksumVerification bool
+	// ChecksumWorkers controls parallel workers for local file checksum
+	// calculation. If unset, four workers are used.
+	ChecksumWorkers int
 }
 
 func NewConfiguration() *Configuration {
